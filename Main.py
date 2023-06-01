@@ -254,10 +254,9 @@ if __name__ == "__main__":
     #  start of race
 
     # ---- c ----
-    # get a look at the stake groups
-
     # Pearson correlation for stake
     stake_pearson = pearsonr(df["Stake"].values, df["Actual_ROI"].values)
+    print("We find no obvious initial correlation between stake size and ROI")
     print("Stake Pearson correlation coefficient:", round(stake_pearson[0], 4), "p-value: ", round(stake_pearson[1], 4))
 
     # ToDo come back and maybe take a more granular look... maybe group the stakes then have a look
@@ -269,8 +268,10 @@ if __name__ == "__main__":
 
     # ----------------------------------------------------Q3----------------------------------------------------------
     # Whilst Profit is useful initially, given we are assuming the true probabilities are the betfair prices, it makes
-    # sense just to rank order them by 3 metrics: mean ROI, stddev of ROI, and number of bets.
-    # Do want them to be consistent with their betting sizes -> variance in EV is a good metric for this
+    # sense just to rank order them by 3 metrics:
+    # Want them to bet on +EV bets -> mean ROI
+    # Consistency in stake sizes relative to EV of the bet -> variance/stddev in EV is a good metric for this
+    # Volume -> number of bets
 
     # Create groupBy object
     grouped_by_runner = df.groupby("Runner")
@@ -284,9 +285,13 @@ if __name__ == "__main__":
     # drop anyone with less than, say, 50 bets as we don't know enough
     grouped_df = grouped_df[grouped_df["NumBets"] > 50]
 
-    # now drop anyone with a negative mean ROI
+    # now drop anyone with a negative mean ROI (on average they make bad bets)
     grouped_df = grouped_df[grouped_df["ROI_Mean"] > 0]
 
+    # we could constrain by EV stddev, but would feel relatively arbitrary and a staking strategy could easily be
+    # recommended
+
+    # rank order the runners
     grouped_df.sort_values(by=["ROI_Mean", "EV_stddev", "NumBets"], inplace=True, ascending=[False, True, False])
 
     print("\n -- Q3 -- \n")
