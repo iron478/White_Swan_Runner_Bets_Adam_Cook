@@ -51,18 +51,19 @@ def settle_place(
 
 
 def simulate_race(
-        win_probs: np.array,
         place_probs: np.array,
+        win_if_place_probs: np.array,
         races_to_sim: int) -> (np.array, np.array):
+
     # create winner and place random arrays
     win_rand = np.random.rand(races_to_sim)
     place_rand = np.random.rand(races_to_sim)
 
-    # Simulate if wins
-    win_result = np.where(win_rand < win_probs, 1, 0)
-
+    place_result = np.where(place_rand < place_probs, 1, 0)
     # If won then has to place, if not won simulate if it places
-    place_result = np.where(win_result == 1, 1, np.where(place_rand < place_probs, 1, 0))
+
+    # Simulate if wins
+    win_result = np.where(place_result == 0, 0, np.where(win_rand < win_if_place_probs, 1, 0))
 
     return win_result, place_result
 
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     df = pd.read_csv("runner_bets.csv")
 
     # Isolate any problematic indexes
-    no_probability = df[(df["BSP"] < 1) | ((df["EW"] == 1) & (df["BSPplace"] < 1))].index
+    no_probability = df[(df["BSP"] < 1) | (df["BSPplace"] < 1)].index
     invalid_price = df[df["PriceTaken"] < 1].index
     invalid_deduction = df[df["Deduction"] > 1].index
     invalid_stakes = df[df["Stake"] < 0].index
@@ -107,8 +108,6 @@ if __name__ == "__main__":
     #  necessary
     # Predicted EV based on ExpROI
     df["Predicted_EV"] = df["ExpROI"].values * df["Stake"].values
-
-    ew_indexes = df[(df["EW"] == 1) & (df["Winner"] == 1)].index
 
     df["EV"] = winner_ev_calculator(df["Stake"].values, df["ProbWin"].values, df["DeductionMult"].values,
                                     df["FractionalPrice"].values, df["ProbNotWin"].values)
@@ -155,15 +154,19 @@ if __name__ == "__main__":
     plt.xlabel("Months of the year 2021")
     plt.ylabel("Profit (millions)")
 
-    # plt.show()
+    plt.title("Q1 plot of PnL and EV")
+
+    plt.show()
 
     # -------------------------------------------------Q1 Part 2------------------------------------------------------
+    # at the moment I don't actually see the necessity for a monte-carlo simulation. It seems that simulated EV will
+    # converge to calculated EV for large sims... (However my current simulation doesn't for some reason!)
     # set number of sims for monte-carlo and number of races to sim
-    num_sims = 1
+    num_sims = 1000
     num_races = len(df.index)
 
-    # compute probability of a horse to place and not win
-    df["PlaceNotWin"] = df["ProbPlace"] - df["ProbWin"]
+    # compute probability of a horse to win if it places
+    win_if_place = df["ProbWin"].values / df["ProbPlace"].values
 
     # set up the array to store profits from sims
     sim_profits = np.zeros(num_sims)
@@ -173,7 +176,7 @@ if __name__ == "__main__":
 
     for i in range(num_sims):
         # get simulated race results
-        winners, placers = simulate_race(df["ProbWin"].values, df["PlaceNotWin"].values, num_races)
+        winners, placers = simulate_race(df["ProbPlace"].values, win_if_place, num_races)
 
         # compute profits
         profits = settle_winner_selection(df["Stake"].values, df["FractionalPrice"].values, df["DeductionMult"].values,
@@ -183,6 +186,7 @@ if __name__ == "__main__":
         # add profit to array
         sim_profits[i] = profits.sum()
 
+    # calculate expected profit
     ev = sim_profits.mean()
 
     print(" -- Q1 -- \n")
@@ -190,8 +194,8 @@ if __name__ == "__main__":
     print("model assumed EV =   ", '${:,.2f}'.format(df["Predicted_EV"].sum()))
     print("calculated EV =      ", '${:,.2f}'.format(df["EV"].sum()))
     print("simmed EV =          ", '${:,.2f}'.format(ev))
-    print("\nModel asummed EV based off ROI is obviously wrong. \nI believe simmed and calculated should be the same"
-          " so probably something wrong in my calculations of one of them.. come back to this\n")
+    print("\nModel asummed EV based off ROI is obviously wrong. "
+          "Again not sure on the motivation for monte-carlo unless I have misinterpreted the question")
 
     # ----------------------------------------------------Q2----------------------------------------------------------
     # ---- a ----
@@ -264,7 +268,7 @@ if __name__ == "__main__":
     quantiles = np.linspace(0, 1, 11)
     stakes = np.quantile(df["Stake"], quantiles)
     stakes_df = pd.DataFrame({"quantiles": quantiles, "stakes": stakes})
-    print(stakes_df)
+    # print(stakes_df)
 
     # ----------------------------------------------------Q3----------------------------------------------------------
     # Whilst Profit is useful initially, given we are assuming the true probabilities are the betfair prices, it makes
