@@ -105,9 +105,8 @@ if __name__ == "__main__":
     # -------------------------------------------------Q1 Part 1------------------------------------------------------
     # ToDo rework the EV/settle functions to be more logical... probably split into EW / winner selections,
     #  handle separately then merge back together or just a handler-type function that calls the other two where
-    #  necessary
-    # Predicted EV based on ExpROI
-    df["Predicted_EV"] = df["ExpROI"].values * df["Stake"].values
+    #  necessary. The below method works (every bet has Each Way calculated, but if it was a winner bet the EV/PnL is 0)
+
 
     df["EV"] = winner_ev_calculator(df["Stake"].values, df["ProbWin"].values, df["DeductionMult"].values,
                                     df["FractionalPrice"].values, df["ProbNotWin"].values)
@@ -160,9 +159,9 @@ if __name__ == "__main__":
 
     # -------------------------------------------------Q1 Part 2------------------------------------------------------
     # at the moment I don't actually see the necessity for a monte-carlo simulation. It seems that simulated EV will
-    # converge to calculated EV for large sims... (However my current simulation doesn't for some reason!)
+    # converge to calculated EV for large sims...
     # set number of sims for monte-carlo and number of races to sim
-    num_sims = 1000
+    num_sims = 10000
     num_races = len(df.index)
 
     # compute probability of a horse to win if it places
@@ -188,6 +187,9 @@ if __name__ == "__main__":
 
     # calculate expected profit
     ev = sim_profits.mean()
+
+    # Predicted EV based on ExpROI... assuming this is what was meant by "Assumed EV"?
+    df["Predicted_EV"] = df["ExpROI"].values * df["Stake"].values
 
     print(" -- Q1 -- \n")
 
